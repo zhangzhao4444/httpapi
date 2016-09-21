@@ -38,76 +38,77 @@ class Handlers
 	//public static var filterUrl = "www.3663.com";
 	//public static var filePath = "D:\\pythontest\\api\\";
 	public static var lock = 0;
-    public static var configfile="d:\\pythontest\\fiddlerjs\\fiddlerjsconf.ini";
-    public static var isautocap=1;
+	public static var configfile="d:\\pythontest\\fiddlerjs\\fiddlerjsconf.ini";
+	public static var isautocap=1;
 	public static var filterUrl="www.3663.com";
 	public static var filePath="D:\\pythontest\\api\\";
 
-    static function loadconf(configfile){
-        var js='{"filePath":"d","filterUrl":"www.3663.cn","isautocap":"0"}';
-        var js = File.ReadAllText(configfile);
-        var cont=Fiddler.WebFormats.JSON.JsonDecode(js);
-        try{
-            filterUrl=cont.JSONObject["filterUrl"];
-            filePath=cont.JSONObject["filePath"];
-            isautocap=cont.JSONObject["isautocap"];
-        }catch(e){//MessageBox.Show("load ini error");
+	static function loadconf(configfile){
+		var js='{"filePath":"d","filterUrl":"www.3663.cn","isautocap":"0"}';
+		var js = File.ReadAllText(configfile);
+		var cont=Fiddler.WebFormats.JSON.JsonDecode(js);
+		try{
+			filterUrl=cont.JSONObject["filterUrl"];
+			filePath=cont.JSONObject["filePath"];
+			isautocap=cont.JSONObject["isautocap"];
+		}catch(e){//MessageBox.Show("load ini error");
 		}
-        var fso = new ActiveXObject("Scripting.FileSystemObject");
-        if (isautocap!=1||!fso.FolderExists(filePath)){isautocap=0;//MessageBox.Show("config error");
+		var fso = new ActiveXObject("Scripting.FileSystemObject");
+		if (isautocap!=1||!fso.FolderExists(filePath)){isautocap=0;//MessageBox.Show("config error");
 		}
-    }
-    static function writefs(fpath:String,op:int,str:String){
-        while(Interlocked.Exchange(lock,1)){Thread.Sleep(500);}
-        var fso = new ActiveXObject("Scripting.FileSystemObject");
-        var file = fso.OpenTextFile(fpath,op,true,true);
-        file.writeLine(str);
-        file.close();
-        Interlocked.Exchange(lock,0);
-    }
+	}
+	static function writefs(fpath:String,op:int,str:String){
+		while(Interlocked.Exchange(lock,1)){Thread.Sleep(500);}
+		var fso = new ActiveXObject("Scripting.FileSystemObject");
+		var file = fso.OpenTextFile(fpath,op,true,true);
+		file.writeLine(str);
+		file.close();
+		Interlocked.Exchange(lock,0);
+	}
 	static function getmd5(input:String) {
-        var data = MD5.Create().ComputeHash(Encoding.Default.GetBytes(input));
-        var sBuilder = new StringBuilder();
-	    var i=0;
-        do {sBuilder.Append(data[i].ToString("x2"));i++;
-        } while (i< data.Length-1)
-        return sBuilder.ToString();
+		var data = MD5.Create().ComputeHash(Encoding.Default.GetBytes(input));
+		var sBuilder = new StringBuilder();
+		var i=0;
+		do {sBuilder.Append(data[i].ToString("x2"));i++;
+		} while (i< data.Length-1)
+		return sBuilder.ToString();
 	}
 	static function record(oSession:Session,fpath:String,op:int){
 		oSession.utilDecodeResponse();
-	    var sBuilder = new StringBuilder();
-	    //var path = oSession.PathAndQuery.match(/(\S+)\?{1}|\\$/g);
-	    sBuilder.Append("\n"+"Request id: 1 " + getmd5(oSession.url) +" "+ oSession.Timers.ClientBeginRequest.Ticks+" "+getmd5(oSession.PathAndQuery.split('?')[0])+"\n");
-	    sBuilder.Append("Request url: " + oSession.url+"\n");
-	    sBuilder.Append("Request api: " + oSession.PathAndQuery.split('?')[0]+"\n");
+		var sBuilder = new StringBuilder();
+		//var path = oSession.PathAndQuery.match(/(\S+)\?{1}|\\$/g);
+		sBuilder.Append("\n"+"Request id: 1 " + getmd5(oSession.url) +" "+ oSession.Timers.ClientBeginRequest.Ticks+" "+getmd5(oSession.PathAndQuery.split('?')[0])+"\n");
+		sBuilder.Append("Request protocol: " + oSession.isHTTPS+"\n");
+		sBuilder.Append("Request url: " + oSession.url+"\n");
+		sBuilder.Append("Request api: " + oSession.PathAndQuery.split('?')[0]+"\n");
 		sBuilder.Append("Request query: " + oSession.PathAndQuery.split('?')[1]+"\n");
 		sBuilder.Append("Request header: " + oSession.oRequest.headers+"\n");
 		sBuilder.Append("Request body: " + oSession.GetRequestBodyAsString()+"\n");
-	    sBuilder.Append("\n");
-	    sBuilder.Append("\n"+"Response id: 2 " + getmd5(oSession.url) +" "+ oSession.Timers.ServerDoneResponse.Ticks+"\n");
-	    sBuilder.Append("Response code: " + oSession.responseCode+"\n");
+		sBuilder.Append("\n");
+		sBuilder.Append("\n"+"Response id: 2 " + getmd5(oSession.url) +" "+ oSession.Timers.ServerDoneResponse.Ticks+"\n");
+		sBuilder.Append("Response code: " + oSession.responseCode+"\n");
 		sBuilder.Append("Response header: " + oSession.oResponse.headers+"\n");
 		sBuilder.Append("Response body: " + oSession.GetResponseBodyAsString()+"\n");
 		sBuilder.Append(getmd5(oSession.url) +" end" + "\r\n");
-	    var str=sBuilder.ToString();
-        try{writefs(fpath,op,str);}catch (e){//MessageBox.Show("write file error");
+		var str=sBuilder.ToString();
+		try{writefs(fpath,op,str);}catch (e){//MessageBox.Show("write file error");
 		}
-    }
-    public static ContextAction("1  Add Selected Sessions")
+	}
+	public static ContextAction("1  Add Selected Sessions")
 	function DoAddSession(oSessions: Session[]) {
 		for (var x:int = 0; x < oSessions.Length; x++){
-		    if (oSessions[x].responseCode == 200 /*|| oSession.GetResponseBodyAsString().IndexOf("\"errno\":0") == 1*/) {
-		    	record(oSessions[x],filePath+"record.gor",8);
+			if (oSessions[x].responseCode == 200 /*|| oSession.GetResponseBodyAsString().IndexOf("\"errno\":0") == 1*/) {
+				record(oSessions[x],filePath+"record.gor",8);
 				oSessions[x]["ui-color"] = "blue";
-		        oSessions[x]["ui-backcolor"]="yellow";
+				oSessions[x]["ui-backcolor"]="yellow";
 			}
 		}
-    }
+	}
 	public static ContextAction("2  Remove Selected Sessions")
 	function DoRemoveSession(oSessions: Session[]) {
 		for (var x:int = 0; x < oSessions.Length; x++){
-		    record(oSessions[x],filePath+"remove.gor",8);
-	    }
+			record(oSessions[x],filePath+"remove.gor",8);
+		}
 	}
 	static function OnBeforeResponse(oSession: Session) {
 		if (m_Hide304s && oSession.responseCode == 304) { oSession["ui-hide"] = "true";}
@@ -420,7 +421,7 @@ class Handlers
 
     // The Main() function runs everytime your FiddlerScript compiles
 	static function Main() {
-	    loadconf(configfile);
+		loadconf(configfile);
 		//var today: Date = new Date();
 		//FiddlerObject.StatusText = " CustomRules.js was loaded at: " + today;
 		//var s = new ActiveXObject("WScript.Shell");
