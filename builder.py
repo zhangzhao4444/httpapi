@@ -5,6 +5,7 @@ import requests
 from collections import deque
 import time
 import urllib.parse
+import middleware
 
 api_path = "D:\\pythontest\\api\\record.gor"
 
@@ -26,7 +27,7 @@ def process(str):
     method= rheader.split("\n")[0].split(" ")[1]
     headers=eval("{'"+rheader.replace("\n", "','").replace(": ", "':'")[0:-2]+"}")
     del headers['header']
-    print(rbody)
+    #print(rbody)
     if payload==''and rbody!='':
         params=rbody
         params = urllib.parse.unquote(params)
@@ -44,17 +45,16 @@ def process(str):
             r = requests.post(url,data=payload,headers=headers)
     if method=='GET':
             r = requests.get(url,data=payload,headers=headers)
-    print(ruid)
-    print(r.status_code)
-    print(r.text)
-    print(r.headers)
-    print("\n")
+    #print(ruid)
+    #print(r.status_code)
+    #print(r.text)
+    #print(r.headers)
+    #print("\n")
     time.sleep(2)
     return (str,r.text,r.headers)
 
-def middleware(processedstr, processedstrbody, processedstrheader, pendingstr):
-    print(processedstr)
-    print(processedstrbody)
+def middle(recordstr, responsebody, responseheader, pendingstr):
+    middleware.rule(recordstr,responsebody, responseheader, pendingstr)
     return pendingstr
 
 def popprocess(deq,n):
@@ -63,10 +63,10 @@ def popprocess(deq,n):
             n-=1
             j=n
             str = deq.popleft()
-            (processedstr,processedstrbody,processedstrheader)=process(str)
+            (recordstr,responsebody, responseheader)=process(str)
             while(j>0):
                 pendingstr=deq.popleft()
-                pendingstr=middleware(processedstr, processedstrbody, processedstrheader, pendingstr)
+                pendingstr=middle(recordstr,responsebody, responseheader, pendingstr)
                 deq.append(pendingstr)
                 j-=1
             popprocess(deq,n)
