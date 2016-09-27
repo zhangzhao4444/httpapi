@@ -1,10 +1,12 @@
 import urllib.parse
 import re
 
-def rule(recordstr, responsebody, responseheader, pendingstr):
-    url = recordstr.split('Request ')[3].split("?")[0].split(" ")[1].replace("\n", "")
+def rule(str,body,header,pstr):
+    """
+    url=str.split('Request ')[3].split("?")[0].split(" ")[1].replace("\n","")
     if url=='www.3663.com/api/msg/send':
-        body=eval(responsebody)
+        body=eval(body)
         token=urllib.parse.quote(body["data"])
-        pendingstr, number = re.subn("content=(.*)&", "content="+token+"&", pendingstr)
-    return pendingstr
+        pstr,_=re.subn("content=(.*)&","content="+token+"&",pstr)
+    """
+    return pstr
