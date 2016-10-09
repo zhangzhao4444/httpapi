@@ -8,8 +8,6 @@ python replay.py
 
 config\white.txt
 
- * header
-
 u.panda.tv/ajax_login body.errmsg
 
 u.panda.tv/ajax_login body.errno
@@ -17,6 +15,8 @@ u.panda.tv/ajax_login body.errno
 roll.panda.tv/get_comm body.data.ts
 
 roll.panda.tv/get_comm header.*
+
+* header
 
 校验屏蔽白名单中的项(支持区分api及通配符*)
 
