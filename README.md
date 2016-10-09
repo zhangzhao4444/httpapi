@@ -8,7 +8,7 @@ python replay.py
 
 config\white.txt
 
-* header
+ * header
 
 u.panda.tv/ajax_login body.errmsg
 
