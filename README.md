@@ -43,3 +43,15 @@ packet a-->send a-->a response-->middleware-->fix other packet-->send b
 支持插件编程
 
 用于动态参数 如token
+
+3.测试结果
+
+尚未完成独立报告模块，仅将运行结果打印
+
+运行测试后result目录下会生成 :
+
+xxxdiff.log 本次测试与上次测试response差异
+
+xxxjson.log 本次测试返回的response json
+
+xxxresult.log 测试结果结构化显示差异，可在json.cn 中显示更直观
