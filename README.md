@@ -3,14 +3,14 @@ http api  记录回放，接口fuzz测试
 
 A)自动抓包记录
 
-利用fiddler插件抓包，支持手工增加和删除，支持https
+利用fiddler js插件开发完成自动抓包，支持手工增加和删除，支持https
 
-修改fiddlerjsconf.ini 抓取指定域名，抓取的包会记录到 record.gor提供给回放所用
+修改fiddlerjsconf.ini 指定域名，抓取的包会记录到 record.gor提供给回放所用
 
 修改fiddler.js中 OnBeforeResponse，DoAddSession 包过滤规则
 oSession.GetResponseBodyAsString().IndexOf("\"errno\":0") 
 
-将fiddler\fiddler.js替换到fiddler4, Rules->Customize rules
+将fiddler\fiddler.js替换到fiddler4, Rules->Customize rules，运行待测程序自动抓取数据包
 
 手动增删：在fiddler某条记录右键选1add 或2delete
 
@@ -42,7 +42,7 @@ packet a-->send a-->a response-->middleware-->fix other packet-->send b
 
 支持插件编程
 
-用于动态参数 如token
+用于解决动态参数 如token
 
 3.测试结果
 
@@ -55,3 +55,7 @@ xxxdiff.log 本次测试与上次测试response差异
 xxxjson.log 本次测试返回的response json
 
 xxxresult.log 测试结果结构化显示差异，可在json.cn 中显示更直观
+
+C api wiki抓取(未完成)
+
+D api fuzz test(未完成)
