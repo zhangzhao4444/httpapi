@@ -3,7 +3,7 @@ http api  记录回放，接口fuzz测试
 
 A)自动抓包记录
 
-利用fiddler插件c抓包，支持手工增加和删除，支持https
+利用fiddler插件抓包，支持手工增加和删除，支持https
 
 修改fiddlerjsconf.ini 抓取指定域名，抓取的包会记录到 record.gor提供给回放所用
 
@@ -12,7 +12,7 @@ oSession.GetResponseBodyAsString().IndexOf("\"errno\":0")
 
 将fiddler\fiddler.js替换到fiddler4, Rules->Customize rules
 
-
+手动增删：在fiddler某条记录右键选1add 或2delete
 
 B)回放测试：
 python replay.py
