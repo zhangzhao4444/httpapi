@@ -1,6 +1,10 @@
 #!/usr/bin/evn python
 # -*- coding:utf-8 -*-
+# @author: zhangzhao_lenovo@126.com
+# @date: 20161005
+# @version: 1.0.0.1009
 import os
+import sys
 import requests
 from collections import deque
 import time
@@ -10,259 +14,368 @@ import difflib
 import pickle
 import json
 import datetime
+import re
 
-def getlastfile():
-    l = os.listdir(lastfile_dir)
-    l.sort(key=lambda fn: os.path.getmtime(lastfile_dir + fn) if not os.path.isdir(lastfile_dir + fn) and os.path.splitext(lastfile_dir + fn)[1]=='txt' else 0)
-    d=lastfile_dir+l[-1]
-    return d
+def readfile(fpath,encoding='utf-16-le'):
+    with open(fpath, 'r',encoding) as f:
+        while True:
+            block = f.readline()
+            if block:
+                yield block
+            else:
+                return
+
+def getlasttestcase(x):
+    l = os.listdir(x)
+    l.sort(key=lambda fn: os.path.getmtime(x+fn) if (not os.path.isdir(x+fn)
+                                                     and (os.path.splitext(fn))[-1] == '.txt') else 0)
+    return x+l[-1]
 
 def getdate():
     return time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime(time.time()))
 
-def config():
-    global havewhlist
-    global whitelist
-    global lastset
-    global firstrun
+def getwhitelist():
     if not os.path.exists(whitefile):
-        fileobj = open(whitefile, 'w')
-        fileobj.close()
-    fileobj = open(whitefile, 'r')
-    for line in fileobj:
+        return 0
+    w = []
+    for line in open(whitefile,'r'):
         if '.' in line:
-            line.replace("\n", "")
-            whitelist.append(line)
-    if whitelist:
-        havewhlist = 1
-    fileobj.close()
-    try:
-        fileobj = open(getlastfile(), 'rb')
-        lastset=pickle.load(fileobj)
-        fileobj.close()
-        if lastset:
-            firstrun=0
-    except Exception as e:
-        pass
+            line.replace("\n","")
+            w.append(line)
+    return w
 
-def list_dict(dict_a):
-    if isinstance(dict_a,dict) :
-        for k,v in dict_a.items():
-            print("%s : %s" %(k,v))
-            list_dict(v)
+def gettestcase():
+    try:
+        return pickle.load(open(getlasttestcase(workpath+"result\\"), 'rb'))
+    except Exception as e:
+        return 0
 
 def diffstr(str1,str2):
-    diff = difflib.SequenceMatcher(None,str(str1) ,str(str2))
-    if diff.quick_ratio()!=1.0:
-        return 0
-    return 1
+    return (difflib.SequenceMatcher(None, str(str1), str(str2))).quick_ratio() == 1.0
 
-def diffdict(dict1,dict2,info,type):
-    filter=[]
-    for line in whitelist:
-        k,v=line.split('.')
-        if k==type:
-            filter.append(v.replace("\n",""))
-    for k, v in dict2.items():
-        if k in filter:
-            continue
-        try:
-            v2 = dict1[k]
-            if not diffstr(str(v), str(v2)):
-                info[k]=(v2,v)
-                newwhitelist[type + '.' + k] = ''
-        except Exception as e:
-            info[k]=('non-existent',v)
-            newwhitelist[type+'.'+k] =''
-    for k, v in dict1.items():
-        if k in filter:
-            continue
-        try:
-            v2=dict2[k]
-        except Exception as e:
-            info[k] =(v2,'non-existent')
-            newwhitelist[type + '.' + k] = ''
+def setfilter(url,type):
+    filter = []
+    if whitelist:
+        for line in whitelist:
+            u, line = line.split(' ', 1)
+            k, v = line.split('.',1)
+            if (k == type and url ==u) or u=='*':
+                filter.append(v.replace("\n", ""))
+    return filter
 
-def checkself(time,url,params,recordcode,recordheader,recordbody,realcode,realbody,realheader):
-    global passnum
-    info={}
-    testcase={}
-    testcase['url']=url
-    testcase['params']=params
-    testcase['details']=info
-    if diffstr(str(recordcode),str(realcode)):
-        diffdict(recordheader, realheader,info,'header')
-        diffdict(recordbody,realbody,info,'body')
+def dictinsertdict(dicta,dictb):
+    for k, v in dicta.items():
+        x=dictb.get(k)
+        if not isinstance(v,dict):
+            dictb.update(dicta)
+            return
+        if x:
+            dictinsertdict(v,x)
+        else:
+            dictb.update(dicta)
+
+def finddiffindict2(url,dict1,key,value,path,type,info,finddiff,rule,newwhitelist):
+    if isinstance(dict1,dict):
+        for k, v in dict1.items():
+            path.append(k)
+            find=finddiffindict2(url,v,key,value,path,type,info,finddiff,rule,newwhitelist)
+            if find:
+                return find
+            if not isinstance(v,dict):
+                if k==key:
+                    if rule and not diffstr(str(v),str(value)) :
+                        strpath = '' + type
+                        for p in path:
+                            strpath = strpath + '.' + p
+                        strpath = url +' '+ strpath
+                        newwhitelist[strpath] = ''
+                        diff={}
+                        diff[k]=(value,v)
+                        plast=path.pop()
+                        for p in path[::-1]:
+                            tmp=diff.copy()
+                            diff={}
+                            diff[p]=tmp
+                        dictinsertdict(diff,info)
+                        path.append(plast)
+                    finddiff=1
+                    return finddiff
+            path.remove(k)
+    return finddiff
+
+def diffdict(url,dict1,dict2,path,type,info,rule,newwhitelist):
+    filter = setfilter(url,type)
+    if isinstance(dict1,dict):
+        for k,v in dict1.items():
+            path.append(k)
+            filterpath = ''
+            for p in path:
+                filterpath = bool(filterpath =='') and (filterpath+ p)or(filterpath+ '.'+ p)
+            if filterpath in filter or '*' in filter:
+                path.remove(k)
+                continue
+            diffdict(url,v,dict2,path,type,info,rule,newwhitelist)
+            if not isinstance(v,dict):
+                find=0
+                find=finddiffindict2(url,dict2,k,v,[],type,info,find,rule,newwhitelist)
+                if not find:
+                    diff = {}
+                    if rule ==1 :
+                        diff[k] = ('non-exist', v)
+                        str=''+type
+                        for p in path:
+                            str=str+'.'+p
+                        str=url+' '+str
+                        newwhitelist[str] = ''
+                    else:
+                        diff[k] = (v, 'non-exist')
+                        str = '' + type
+                        for p in path:
+                            str = str + '.' + p
+                        str = url +' '+ str
+                        newwhitelist[str] = ''
+                    plast = path.pop()
+                    for p in path[::-1]:
+                        tmp = diff.copy()
+                        diff = {}
+                        diff[p] = tmp
+                    info.update(diff)
+                    path.append(plast)
+            path.remove(k)
+
+def check(id,url,params,code1,header1,body1,code2,header2,body2):
+    global failnum
+    diff={}
+    tmp={}
+    result={}
+    result['api']=url+" "+params
+    result['test differences']=diff
+    url=(re.compile(r'://(.+)').findall(bool(url[-1]== '?') and url[0:-1] or url))[0]
+    if diffstr(str(code1),str(code2)):
+        tmp={}
+        diffdict(url,header1, header2, [], 'header', tmp, 1, newwhitelist)
+        diffdict(url,header2, header1, [], 'header', tmp, 0, newwhitelist)
+        if tmp:
+            diff['response headers'] = tmp
+            tmp = {}
+        diffdict(url,body1, body2, [], 'body', tmp, 1, newwhitelist)
+        diffdict(url,body2, body1, [], 'body', tmp, 0, newwhitelist)
+        if tmp:
+            diff['response body'] = tmp
     else:
-        info['reopenscode']=(recordcode,realcode)
-    if not info:
-        testcase['result']='PASS'
-        passnum+=1
+        diff['response code']=(code1,code2)
+    if not diff:
+        result['result']='PASS'
     else:
-        testcase['result']='FAIL'
-    resultset[time]=testcase
+        result['result']='FAIL'
+        failnum += 1
+    testresults[id]=result
 
-def send(url,method,payload,headers):
-    if method=='POST':
-            r = requests.post(url,data=payload,headers=headers)
-    if method=='GET':
-            r = requests.get(url,data=payload,headers=headers)
+def send(url,method,payload,headers,**attrs):
+    if method == 'POST':
+        r = requests.post(url, data=payload, headers=headers,**attrs)
+    if method == 'GET':
+        r = requests.get(url, data=payload, headers=headers,**attrs)
     time.sleep(2)
-    return (r.status_code,r.text,r.headers)
+    return (r.status_code,r.json(),r.headers)
+
+def jsontodict(str):
+    try:
+        return json.load(str)
+    except:
+        return json.loads(re.compile(r'({.+})').findall(str)[0])
+
+def strtodict(str,sp='&',op='='):
+    dict={}
+    try:
+        list=str.split(sp)
+    except ValueError:
+        return dict
+    for i in list:
+        try:
+            k,v=i.split(op)
+            dict[k] = v
+        except ValueError:
+            break
+    return dict
+
+def testcasebuild(str):
+    def replacesplit(str):
+        return str.replace("\n", "").split(" ")[-1]
+    global testnum
+    testnum += 1
+    (request, response) = str.split('Response ', 1)
+    (_, rid, ishttps, rurl, _, requesquery, requestheader, requestbody) = request.split('Request ')
+    (_, rop, ruid, rtime, raid) = rid.replace("\n", "").split(" ")
+    (_, responsecode, reaponseheader, responsebody) = response.split('Response ')
+    print(rtime)
+    url = re.compile(r'url: (.+)').findall(rurl.split('?')[0])[0]
+    params = replacesplit(requesquery)
+    payload = ''
+    if params != 'undefined':
+        url = url + '?'
+        payload=strtodict(urllib.parse.unquote(params))
+    else:
+        params = ''
+    ishttps = replacesplit(ishttps)
+    method=re.compile(r'header: (\w+)').findall(requestheader.split("\n")[0])[0]
+    requestheader = strtodict(requestheader,'\n',': ')
+    if 'header'in requestheader:
+        del requestheader['header']
+    responsecode = re.compile(r'code: (.+)').findall(responsecode.split("\n")[0])[0]
+    reaponseheader = strtodict(reaponseheader,'\n',': ')
+    if 'header' in reaponseheader:
+        del reaponseheader['header']
+    responsebody=re.compile(r'body: (.+)').findall(responsebody.split("\n")[0])[0]
+    if payload == '' and requestbody != '':
+        params=urllib.parse.unquote(re.compile(r'body: (.+)').findall(requestbody.split("\n")[0])[0])
+        payload = strtodict(params)
+    https=0
+    if ishttps == 'True':
+        https=1
+        url = "https://" + url
+    else:
+        url = 'http://' + url
+    print("url : " + url + ' ' + params + "    sending...")
+    return url,method,payload,requestheader,rtime,params,https,responsecode,reaponseheader,responsebody
 
 def process(str):
-    global testnum
-    testnum+=1
-    (request,response)=str.split('Response ',1)
-    (_,rid,ishttps,rurl, _, rquery, rheader,rbody)= request.split('Request ')
-    (_,rop,ruid,rtime,raid)=rid.replace("\n","").split(" ")
-    (_,recordcode, recordheader, recordbody) =response.split('Response ')
-    url=rurl.split("?")[0].split(" ")[1].replace("\n","")
-    params = rquery.replace("\n","").split(" ")[-1]
-    payload=''
-    if params !='undefined':
-        url=url+'?'
-        params=urllib.parse.unquote(params)
-        payload = eval("{'" + params.replace("&", "','").replace("=", "':'") + "'}")
-    else:
-        params=''
-    ishttps= ishttps.replace("\n","").split(" ")[-1]
-    rbody= rbody.replace("\n","").split(" ")[-1]
-    method= rheader.split("\n")[0].split(" ")[1]
-    headers=eval("{'"+rheader.replace("\n", "','").replace(": ", "':'")[0:-2]+"}")
-    del headers['header']
-    recordcode= recordcode.replace("\n","").split(" ")[-1]
-    recordheader=eval("{'"+recordheader.replace("\n", "','").replace(": ", "':'")[0:-2]+"}")
-    del recordheader['header']
-    recordbody=recordbody.replace("\n"," ").split(" ")[1]
-    if payload==''and rbody!='':
-        params=rbody
-        params = urllib.parse.unquote(params)
-        payload=eval("{'"+params.replace("&", "','").replace("=", "':'")+"'}")
-    if ishttps=='True':
-        url="https://"+url
-    else:
-        url='http://'+url
-    print("url : "+url+' '+params +"    sending...")
-    (realcode, realbody, realheader)=send(url, method, payload, headers)
-    print("send done,checking...\n")
-    if firstrun:
-        checkself(rtime,url,params,recordcode,recordheader,eval(recordbody),realcode,eval(realbody),realheader)
-    else:
-        if rtime in lastset:
-            checkself(rtime, url, params, lastset[rtime]['responsecode'], lastset[rtime]['responseheader'], lastset[rtime]['responsebody'], realcode, eval(realbody), realheader)
+    url, method, payload, headers, rtime, params, https , code1, header1, body1 =testcasebuild(str)
+    try:
+        if https:
+            (code2, body2, header2) = send(url, method, payload, headers,verify=False)
         else:
-            info = {}
-            info['id']=('non-existent',rtime)
-            testcase = {}
-            testcase['url'] = url
-            testcase['params'] = params
-            testcase['details'] = info
-            testcase['result'] = 'FAIL'
-            resultset[time] = testcase
-    itemset={}
-    itemset["url"]=url
-    itemset["params"]=params
-    itemset["responsecode"]=realcode
-    itemset["responseheader"]=dict(realheader)
-    itemset["responsebody"]=eval(realbody)
-    runset[rtime]=itemset
-    #print(runset[rtime])
-    return (realcode, realbody, realheader)
+            (code2, body2, header2) = send(url, method, payload, headers)
+    except Exception as e:
+        print(e)
+        (code2, body2, header2)=('send except!','{"errno":""}',{})
+    header2=dict(header2)
+    if not lasttestcase or rtime not in lasttestcase:
+        body1 = jsontodict(body1)
+        print("send done,checking self record...\n")
+        check(rtime,url,params,code1,header1,body1,code2,header2,body2)
+    else:
+        print("send done,checking last test...\n")
+        check(rtime, url, params, lasttestcase[rtime]['response code'], lasttestcase[rtime]['response header'], lasttestcase[rtime]['response body'], code2,header2,body2)
+    testcase={}
+    testcase["url"]=url
+    if params=='':params=payload
+    testcase["params"]=params
+    testcase["response code"]=code2
+    testcase["response header"] = dict(header2)
+    testcase["response body"] = body2
+    testcases[rtime]=testcase
+    return (code2, body2, header2)
 
-def popprocess(deq,n):
+def fifoprocess(queue,n):
     while True:
         try:
             n-=1
             j=n
-            str = deq.popleft()
-            (responsecode,responsebody, responseheader)=process(str)
+            str = queue.popleft()
+            (code,body, header)=process(str)
             while(j>0):
-                deq.append(middleware.rule(str,responsebody,responseheader,deq.popleft()))
+                queue.append(middleware.rule(str,body,header,queue.popleft()))
                 j-=1
-            popprocess(deq,n)
+            fifoprocess(queue,n)
         except IndexError:
             break
 
-def createwl():
-    if not havewhlist:
-        fileobj = open(whitefile, 'w')
-        for k, v in newwhitelist.items():
-            fileobj.write(k + '\n')
-        fileobj.close()
-
-def run():
-    global dataflow
+def run(dataflow):
     session = ''
     sessionid = ''
+    pattern = re.compile(r'(\w+)')
     try:
-        data = open(recordfile, encoding='utf-16-le').readlines()
-    except UnicodeEncodeError:
-        data = open(recordfile, encoding='utf-8').readlines()
-    for i in data:
-        if not i.startswith("\n"):
-            i = i.replace("\ufeff", "")
-            session += i
-            if i.startswith("Request id: "):
-                timeid, sessionid = (int(i.split(" ")[4]), i.split(" ")[3])
-            if i.startswith(sessionid + " end"):
-                dataflow[timeid] = session
-                session = ''
-    if  os.path.exists(removefile):
-        try:
-            data = open(removefile, encoding='utf-16-le').readlines()
-        except UnicodeEncodeError:
-            data = open(removefile, encoding='utf-8').readlines()
-        for i in data:
+        for i in open(recordfile, encoding='utf-16-le'):
             if not i.startswith("\n"):
                 i = i.replace("\ufeff", "")
-                if i.startswith("Request id: "):
-                    timeid, _ = (int(i.split(" ")[4]), i.split(" ")[3])
-                    if timeid in dataflow:
-                        del dataflow[timeid]
+                session += i
+            if i.startswith("Request id: "):
+                id, sessionid = (int(pattern.findall(i)[4]),pattern.findall(i)[3])
+            if i.startswith(sessionid + " end"):
+                dataflow[id] = session
+                session = ''
+    except Exception as e:
+        print("api record file open error, exit!")
+        exit()
+    if  os.path.exists(removefile):
+        try:
+            for i in open(removefile, encoding='utf-16-le'):
+                if not i.startswith("\n"):
+                    i = i.replace("\ufeff", "")
+                    if i.startswith("Request id: "):
+                        id= int(pattern.findall(i)[4])
+                        if id in dataflow:
+                            del dataflow[id]
+        except Exception as e:
+            print("api removefile file open error, exit test!")
+            exit()
     dataflow = sorted(dataflow.items(), key=lambda x: x[0], reverse=False)
     n = 0
     for k, v in dataflow:
-        deq.append(v)
+        Queue.append(v)
         n += 1
-    popprocess(deq, n)
-    createwl()
+    fifoprocess(Queue, n)
+
+def writelog(file,test,type='json'):
+    try:
+        if type=='json':
+            return open(file, 'w').write(json.dumps(sorted(test.items(), key=lambda x: x[0], reverse=False), sort_keys=True, separators=(',', ':')))
+        if type=='str':
+            fileobj = open(file, 'w')
+            for k, v in test.items():
+                fileobj.write(k + '\n')
+            fileobj.close()
+        if type == 'listtostr':
+            fileobj = open(file, 'w')
+            for k, v in test:
+                fileobj.write(k + '\n')
+            fileobj.close()
+        if type=='pickle':
+            pickle.dump(test,open(file,'wb'))
+    except Exception as e:
+        pass
 
 def report():
-    global testnum,passnum
+    global testnum, failnum,newwhitelist
+    testresults[' In all'] = testnum
+    testresults[' pass'] = testnum - failnum
+    testresults[' fail'] = failnum
+    curtime = getdate()
     print("test result:")
-    i=0
-    for k, v in resultset.items():
-        i+=1
-        print(i)
-        print(v)
-    #json.dumps(resultset)
-    pickle.dump(runset,open(lastfile,'wb'))
-    #json.dumps(runset,open(lastjsonfile, 'w'))
-    print("\n%s tests , %s pass , %s fail " %(testnum,passnum,testnum-passnum))
-
+    n = 0
+    for k, v in testresults.items():
+        if k not in (' In all', ' pass', ' fail'):
+            print(n)
+            print(v)
+            n += 1
+    not whitelist and writelog(whitefile, newwhitelist, 'str')
+    writelog(workpath + "result\\%sjson.log" % curtime, testcases)
+    writelog(workpath + "result\\%sresult.log" % curtime, testresults)
+    writelog(workpath + "result\\%sdiff.log" % curtime, newwhitelist, 'str')
+    writelog(workpath + "result\\%s.txt" % curtime, testcases, 'pickle')
+    print("\n%s tests , %s pass , %s fail " % (testnum, testnum - failnum, failnum))
 
 if __name__ == "__main__":
-    recordfile = "D:\\pythontest\\api\\record.gor"
-    removefile = "D:\\pythontest\\api\\remove.gor"
-    whitefile = "D:\\pythontest\\config\\white.txt"
-    curtime = getdate()
-    lastfile = "D:\\pythontest\\result\\%s.txt" % curtime
-    lastfile_dir = "D:\\pythontest\\result\\"
-    lastjsonfile = "D:\\pythontest\\result\\%s.json" % curtime
-    dataflow = {}
-    deq = deque()
-    firstrun = 1
-    havewhlist = 0
-    testnum=0
-    passnum=0
-    whitelist = []
-    resultset = {}
-    lastset={}
-    runset={}
+    workpath="d:\\pythontest\\"
+    if not os.path.exists(workpath):
+        workpath = sys.path[0]+'\\'
+    recordfile = workpath+"api\\record.gor"
+    if not os.path.exists(recordfile):
+        print("api record file not exist, exit test!")
+        exit()
+    removefile = workpath+"api\\remove.gor"
+    whitefile = workpath+"config\\white.txt"
+    testcase_dir = workpath+"result\\"
+    whitelist = getwhitelist()
+    lasttestcase = gettestcase()
+    testresults = {}
+    testcases = {}
     newwhitelist = {}
-    config()
-    run()
+    Queue = deque()
+    testnum = 0
+    failnum = 0
+    run({})
     report()
 
 
