@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 # @author: zhangzhao_lenovo@126.com
 # @date: 20161012
-# @version: 1.0.0.1003
+# @version: 1.0.0.1005
 import os
 import sys
 import requests
@@ -166,8 +166,9 @@ def run(dataflow,wikis):
         for url in wikis:
             getwikiapi(url, api)
     except Exception:
-        print("wiki open failed , please check")
-    api and report(api,recordapi)
+        print("wiki open failed")
+    if not api: print("wiki api parser failed !,exit")
+    else: report(api,recordapi)
 
 if __name__ == "__main__":
     workpath="d:\\pythontest\\"
