@@ -350,6 +350,7 @@ def report():
             print(v)
             n += 1
     not whitelist and writelog(whitefile, newwhitelist, 'str')
+    not os.path.exists(workpath + "result\\") and os.makedirs(workpath + "result\\")
     writelog(workpath + "result\\%sjson.log" % curtime, testcases)
     writelog(workpath + "result\\%sresult.log" % curtime, testresults)
     writelog(workpath + "result\\%sdiff.log" % curtime, newwhitelist, 'str')
