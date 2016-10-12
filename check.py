@@ -105,6 +105,8 @@ def getwikiapi(url,api):
             api[md5(url)] = url
 
 def report(tapi,rapi):
+    total=1
+    lack=1
     error={}
     total=len(tapi)
     for id,url in rapi.items():
@@ -160,9 +162,12 @@ def run(dataflow,wikis):
         getrecordapi(v,recordapi)
     #print(set(recordapi))
     api={}
-    for url in wikis:
-        getwikiapi(url, api)
-    report(api,recordapi)
+    try:
+        for url in wikis:
+            getwikiapi(url, api)
+    except Exception:
+        print("wiki open failed , please check")
+    api and report(api,recordapi)
 
 if __name__ == "__main__":
     workpath="d:\\pythontest\\"
