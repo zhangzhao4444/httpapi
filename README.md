@@ -56,6 +56,14 @@ xxxjson.log 本次测试返回的response json
 
 xxxresult.log 测试结果结构化显示差异，可在json.cn 中显示更直观
 
-C api wiki抓取(未完成)
+C api wiki抓取
+
+python check.py
+
+从wiki中拉取api，计算record中api覆盖率
+
+提供三种拉取方法，如cookies（自己先登陆并抓包手动获取cookies，覆盖代码中的cookiesstr），seleium（修改登陆标记），pem（获取location重定项，待证书发送https登陆，带回cookies）
+
+wiki中获取api需结合自身修改正则
 
 D api fuzz test(未完成)
