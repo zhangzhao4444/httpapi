@@ -1,7 +1,7 @@
 # httpapi(python3)
 http api  记录回放，接口fuzz测试
 
-*A)自动抓包记录
+·A)自动抓包记录
 
 利用fiddler js插件开发完成自动抓包，支持手工增加和删除，支持https
 
@@ -14,7 +14,7 @@ oSession.GetResponseBodyAsString().IndexOf("\"errno\":0")
 
 手动增删：在fiddler某条记录右键选1add 或2delete
 
-*B)回放测试：
+·B)回放测试：
 python replay.py
 
 1.白名单
@@ -56,7 +56,7 @@ xxxjson.log 本次测试返回的response json
 
 xxxresult.log 测试结果结构化显示差异，可在json.cn 中显示更直观
 
-*C api wiki抓取
+·C api wiki抓取
 
 python check.py
 
@@ -66,4 +66,4 @@ python check.py
 
 wiki中获取api需结合自身修改正则
 
-*D api fuzz test(未完成)
+·D api fuzz test(未完成)
