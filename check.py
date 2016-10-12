@@ -173,5 +173,5 @@ if __name__ == "__main__":
         print("api record file not exist, exit test!")
         exit()
     removefile = workpath+"api\\remove.gor"
-    wikis = ['http://wiki.360dev.org/pages/viewpage.action?pageId=4426709']
+    wikis = ['http://xxx/pages/viewpage.action?pageId=4426709']
     run({},wikis)
