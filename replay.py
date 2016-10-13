@@ -347,7 +347,8 @@ def report():
     for k, v in testresults.items():
         if k not in (' In all', ' pass', ' fail'):
             print(n)
-            print(v)
+            #print(v)
+            print(json.dumps(v))#,indent=2)
             n += 1
     not whitelist and writelog(whitefile, newwhitelist, 'str')
     not os.path.exists(workpath + "result\\") and os.makedirs(workpath + "result\\")

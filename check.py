@@ -14,6 +14,7 @@ import hashlib
 from bs4 import BeautifulSoup
 
 def md5(s):
+    s=s.lower()
     m=hashlib.md5()
     m.update(s.encode(encoding="utf-8"))
     return m.hexdigest()
