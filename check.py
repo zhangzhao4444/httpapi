@@ -6,9 +6,6 @@
 import os
 import sys
 import requests
-import time
-import urllib.parse
-import datetime
 import re
 import hashlib
 from bs4 import BeautifulSoup

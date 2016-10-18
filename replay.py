@@ -13,7 +13,6 @@ import middleware
 import difflib
 import pickle
 import json
-import datetime
 import re
 
 def readfile(fpath,encoding='utf-16-le'):
@@ -379,5 +378,3 @@ if __name__ == "__main__":
     failnum = 0
     run({})
     report()
-
-
