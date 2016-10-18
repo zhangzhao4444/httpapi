@@ -66,4 +66,12 @@ python check.py
 
 wiki中获取api需结合自身修改正则
 
-### D api fuzz test(未完成)
+### D api fuzz test
+
+python fuzz.py
+
+读取record中的api，并对其做fuzz测试，测试结果保存在result\xxxApiFuzzTest.log 
+
+fuzz规则包含：无header,无cookies,无params,缺params,多params,值空,值null,无值,数字放大/缩小/特殊极值,字符串裁减/延长/超长/非法
+
+也可自行添加fuzz规则。修改expectcode = [200] 作为测试pass.failed依据
